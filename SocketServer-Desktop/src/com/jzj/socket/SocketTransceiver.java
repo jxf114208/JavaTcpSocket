@@ -8,7 +8,7 @@ import java.net.Socket;
 
 /**
  * Socket收发器 通过Socket发送数据，并使用新线程监听Socket接收到的数据
- * 
+ *
  * @author jzj1993
  * @since 2015-2-22
  */
@@ -22,9 +22,9 @@ public abstract class SocketTransceiver implements Runnable {
 
 	/**
 	 * 实例化
-	 * 
+	 *
 	 * @param socket
-	 *            已经建立连接的socket
+	 *          已经建立连接的socket
 	 */
 	public SocketTransceiver(Socket socket) {
 		this.socket = socket;
@@ -33,11 +33,11 @@ public abstract class SocketTransceiver implements Runnable {
 
 	/**
 	 * 获取连接到的Socket地址
-	 * 
+	 *
 	 * @return InetAddress对象
 	 */
 	public InetAddress getInetAddress() {
-		return addr;
+		return this.addr;
 	}
 
 	/**
@@ -46,8 +46,8 @@ public abstract class SocketTransceiver implements Runnable {
 	 * 如果开启失败，会断开连接并回调{@code onDisconnect()}
 	 */
 	public void start() {
-		runFlag = true;
-		new Thread(this).start();
+		this.runFlag = true;
+		new Thread( this ).start();
 	}
 
 	/**
@@ -56,29 +56,31 @@ public abstract class SocketTransceiver implements Runnable {
 	 * 连接断开后，会回调{@code onDisconnect()}
 	 */
 	public void stop() {
-		runFlag = false;
+		this.runFlag = false;
 		try {
-			socket.shutdownInput();
-			in.close();
-		} catch (Exception e) {
+			this.socket.shutdownInput();
+			this.in.close();
+		}
+		catch ( Exception e ) {
 			e.printStackTrace();
 		}
 	}
 
 	/**
 	 * 发送字符串
-	 * 
+	 *
 	 * @param s
-	 *            字符串
+	 *          字符串
 	 * @return 发送成功返回true
 	 */
-	public boolean send(String s) {
-		if (out != null) {
+	public boolean send(byte[] b) {
+		if ( this.out != null ) {
 			try {
-				out.writeUTF(s);
-				out.flush();
+				this.out.write( b );
+				this.out.flush();
 				return true;
-			} catch (Exception e) {
+			}
+			catch ( Exception e ) {
 				e.printStackTrace();
 			}
 		}
@@ -91,54 +93,72 @@ public abstract class SocketTransceiver implements Runnable {
 	@Override
 	public void run() {
 		try {
-			in = new DataInputStream(this.socket.getInputStream());
-			out = new DataOutputStream(this.socket.getOutputStream());
-		} catch (IOException e) {
-			e.printStackTrace();
-			runFlag = false;
+			this.in = new DataInputStream( this.socket.getInputStream() );
+			this.out = new DataOutputStream( this.socket.getOutputStream() );
 		}
-		while (runFlag) {
+		catch ( IOException e ) {
+			e.printStackTrace();
+			this.runFlag = false;
+		}
+		while ( this.runFlag ) {
+			// 此处需要增加超时设置，防止socket客户端已关闭，服务端没有及时关闭的问题。如：客户端长期没有发送数据
 			try {
-				final String s = in.readUTF();
-				this.onReceive(addr, s);
-			} catch (IOException e) {
+				if ( this.in.available() > 0 ) {
+					final byte[] buffer = new byte[this.in.available()];
+					this.in.read( buffer );
+					this.onReceive( this.addr, buffer );
+				}
+				else {
+					// 等待100毫秒
+					try {
+						Thread.sleep( 100 );
+					}
+					catch ( InterruptedException e ) {
+						e.printStackTrace();
+					}
+				}
+			}
+			catch ( IOException e ) {
 				// 连接被断开(被动)
-				runFlag = false;
+				this.runFlag = false;
 			}
 		}
 		// 断开连接
-		try {
-			in.close();
-			out.close();
-			socket.close();
-			in = null;
-			out = null;
-			socket = null;
-		} catch (IOException e) {
+		try
+
+		{
+			this.in.close();
+			this.out.close();
+			this.socket.close();
+			this.in = null;
+			this.out = null;
+			this.socket = null;
+		}
+		catch ( IOException e ) {
 			e.printStackTrace();
 		}
-		this.onDisconnect(addr);
+		this.onDisconnect( this.addr );
 	}
 
 	/**
 	 * 接收到数据
 	 * <p>
 	 * 注意：此回调是在新线程中执行的
-	 * 
+	 *
 	 * @param addr
-	 *            连接到的Socket地址
+	 *          连接到的Socket地址
 	 * @param s
-	 *            收到的字符串
+	 *          收到的字符串
 	 */
-	public abstract void onReceive(InetAddress addr, String s);
+	public abstract void onReceive(InetAddress addr, byte[] s);
 
 	/**
 	 * 连接断开
 	 * <p>
 	 * 注意：此回调是在新线程中执行的
-	 * 
+	 *
 	 * @param addr
-	 *            连接到的Socket地址
+	 *          连接到的Socket地址
 	 */
 	public abstract void onDisconnect(InetAddress addr);
 }

@@ -9,7 +9,7 @@ import java.util.List;
 
 /**
  * TCP Socket服务器端
- * 
+ *
  * @author jzj1993
  * @since 2015-2-22
  */
@@ -21,9 +21,9 @@ public abstract class TcpServer implements Runnable {
 
 	/**
 	 * 实例化
-	 * 
+	 *
 	 * @param port
-	 *            监听的端口
+	 *          监听的端口
 	 */
 	public TcpServer(int port) {
 		this.port = port;
@@ -35,8 +35,8 @@ public abstract class TcpServer implements Runnable {
 	 * 如果启动失败，会回调{@code onServerStop()}
 	 */
 	public void start() {
-		runFlag = true;
-		new Thread(this).start();
+		this.runFlag = true;
+		new Thread( this ).start();
 	}
 
 	/**
@@ -45,7 +45,7 @@ public abstract class TcpServer implements Runnable {
 	 * 服务器停止后，会回调{@code onServerStop()}
 	 */
 	public void stop() {
-		runFlag = false;
+		this.runFlag = false;
 	}
 
 	/**
@@ -54,12 +54,13 @@ public abstract class TcpServer implements Runnable {
 	@Override
 	public void run() {
 		try {
-			final ServerSocket server = new ServerSocket(port);
-			while (runFlag) {
+			final ServerSocket server = new ServerSocket( this.port );
+			while ( this.runFlag ) {
 				try {
 					final Socket socket = server.accept();
-					startClient(socket);
-				} catch (IOException e) {
+					this.startClient( socket );
+				}
+				catch ( IOException e ) {
 					// 接受客户端连接出错
 					e.printStackTrace();
 					this.onConnectFailed();
@@ -67,15 +68,17 @@ public abstract class TcpServer implements Runnable {
 			}
 			// 停止服务器，断开与每个客户端的连接
 			try {
-				for (SocketTransceiver client : clients) {
+				for ( SocketTransceiver client : this.clients ) {
 					client.stop();
 				}
-				clients.clear();
+				this.clients.clear();
 				server.close();
-			} catch (Exception e) {
+			}
+			catch ( Exception e ) {
 				e.printStackTrace();
 			}
-		} catch (IOException e) {
+		}
+		catch ( IOException e ) {
 			// ServerSocket对象创建出错，服务器启动失败
 			e.printStackTrace();
 		}
@@ -84,35 +87,35 @@ public abstract class TcpServer implements Runnable {
 
 	/**
 	 * 启动客户端收发
-	 * 
+	 *
 	 * @param socket
 	 */
 	private void startClient(final Socket socket) {
-		SocketTransceiver client = new SocketTransceiver(socket) {
+		SocketTransceiver client = new SocketTransceiver( socket ) {
 
 			@Override
-			public void onReceive(InetAddress addr, String s) {
-				TcpServer.this.onReceive(this, s);
+			public void onReceive(InetAddress addr, byte[] b) {
+				TcpServer.this.onReceive( this, b );
 			}
 
 			@Override
 			public void onDisconnect(InetAddress addr) {
-				clients.remove(this);
-				TcpServer.this.onDisconnect(this);
+				TcpServer.this.clients.remove( this );
+				TcpServer.this.onDisconnect( this );
 			}
 		};
 		client.start();
-		clients.add(client);
-		this.onConnect(client);
+		this.clients.add( client );
+		this.onConnect( client );
 	}
 
 	/**
 	 * 客户端：连接建立
 	 * <p>
 	 * 注意：此回调是在新线程中执行的
-	 * 
+	 *
 	 * @param client
-	 *            SocketTransceiver对象
+	 *          SocketTransceiver对象
 	 */
 	public abstract void onConnect(SocketTransceiver client);
 
@@ -127,21 +130,21 @@ public abstract class TcpServer implements Runnable {
 	 * 客户端：收到字符串
 	 * <p>
 	 * 注意：此回调是在新线程中执行的
-	 * 
+	 *
 	 * @param client
-	 *            SocketTransceiver对象
+	 *          SocketTransceiver对象
 	 * @param s
-	 *            字符串
+	 *          字符串
 	 */
-	public abstract void onReceive(SocketTransceiver client, String s);
+	public abstract void onReceive(SocketTransceiver client, byte[] s);
 
 	/**
 	 * 客户端：连接断开
 	 * <p>
 	 * 注意：此回调是在新线程中执行的
-	 * 
+	 *
 	 * @param client
-	 *            SocketTransceiver对象
+	 *          SocketTransceiver对象
 	 */
 	public abstract void onDisconnect(SocketTransceiver client);
 
