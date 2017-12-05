@@ -1,5 +1,7 @@
 package com.jzj.socket;
 
+import ru.d_shap.hex.HexHelper;
+
 public class ClsMainServer {
 
 	public static void main(String[] args) {
@@ -19,7 +21,7 @@ public class ClsMainServer {
 			@Override
 			public void onReceive(SocketTransceiver client, byte[] b) {
 				printInfo( client, "Send Data: " + b );
-				client.send( b );
+				client.send( HexHelper.toBytes( "0000000000100006313338303335313030303100013D" ) );
 			}
 
 			@Override
